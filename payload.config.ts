@@ -1,6 +1,6 @@
 import sharp from 'sharp'
 import { buildConfig } from 'payload'
-import { sqliteAdapter } from '@payloadcms/db-sqlite'
+import { postgresAdapter } from '@payloadcms/db-postgres'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -21,28 +21,40 @@ export default buildConfig({
   },
 
   // ── Collections ───────────────────────────────────────────
-  // Every collection you add here appears in the /admin sidebar
   collections: [Articles, Users],
 
-  // ── Rich text editor (used by Payload admin UI internally) ─
+  // ── Rich text editor ──────────────────────────────────────
   editor: lexicalEditor({}),
 
   // ── Security secret ───────────────────────────────────────
-  // Used to sign JWT tokens for admin sessions. ALWAYS change in production.
+  // Sign JWT tokens for admin sessions. Set PAYLOAD_SECRET in your environment.
   secret: process.env.PAYLOAD_SECRET || 'fallback-secret-change-in-production',
 
   // ── TypeScript type generation ────────────────────────────
-  // Running "npm run generate:types" creates payload-types.ts automatically
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
 
   // ── Database ──────────────────────────────────────────────
-  // SQLite: stores everything in a single file (payload.db) in the project root.
-  // No external database server, no XAMPP, no MySQL — it just works.
-  db: sqliteAdapter({
-    client: {
-      url: process.env.DATABASE_URI || 'file:./payload.db',
+  // WHY PostgreSQL instead of SQLite:
+  //   SQLite stores data in a local file (payload.db). Vercel's serverless
+  //   functions run in ephemeral, read-only containers — they cannot write to
+  //   the filesystem, so SQLite always fails in production with:
+  //   "Unable to open connection to local database ./payload.db"
+  //
+  //   PostgreSQL is a proper network database server (hosted on Railway here).
+  //   Vercel functions connect to it over TCP using a connection string, which
+  //   works perfectly in a serverless/ephemeral environment.
+  //
+  // WHAT CHANGED:
+  //   Before: sqliteAdapter from @payloadcms/db-sqlite
+  //   After:  postgresAdapter from @payloadcms/db-postgres
+  //
+  //   DATABASE_URI must now be a PostgreSQL connection string:
+  //   postgresql://user:password@host:5432/dbname
+  db: postgresAdapter({
+    pool: {
+      connectionString: process.env.DATABASE_URI,
     },
   }),
 

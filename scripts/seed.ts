@@ -1,18 +1,44 @@
 // scripts/seed.ts
-// Inserts the 8 sample articles directly into the SQLite database.
-// Uses better-sqlite3 (already installed via @payloadcms/db-sqlite) to bypass
-// the Payload initialisation chain, which fails on Node.js 24 due to a
-// @next/env ESM interop bug.
+// Seeds the 8 sample articles directly into the PostgreSQL database.
+// Uses the 'postgres' npm package to bypass the Payload initialisation chain.
+//
+// IMPORTANT: Run this ONLY after starting the dev server at least once so that
+// Payload has created the database schema (tables + columns) via auto-migration.
 //
 // HOW TO RUN:
 //   npm run seed
 
-import Database from 'better-sqlite3'
+import postgres from 'postgres'
+import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const DB_PATH = path.resolve(__dirname, '../payload.db')
+
+// Manually load DATABASE_URI from .env.local
+function loadEnv(): Record<string, string> {
+  const envPath = path.resolve(__dirname, '../.env.local')
+  if (!fs.existsSync(envPath)) return {}
+  const lines = fs.readFileSync(envPath, 'utf8').split('\n')
+  const env: Record<string, string> = {}
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+    const eq = trimmed.indexOf('=')
+    if (eq < 0) continue
+    env[trimmed.slice(0, eq).trim()] = trimmed.slice(eq + 1).trim()
+  }
+  return env
+}
+
+const env = loadEnv()
+const connectionString = process.env.DATABASE_URI ?? env.DATABASE_URI
+
+if (!connectionString || !connectionString.startsWith('postgresql')) {
+  console.error('ERROR: DATABASE_URI must be a PostgreSQL connection string.')
+  console.error('  Set it in .env.local or export it before running this script.')
+  process.exit(1)
+}
 
 const articles = [
   {
@@ -97,21 +123,32 @@ const articles = [
   },
 ]
 
-const db = new Database(DB_PATH)
+const sql = postgres(connectionString)
 
-const insert = db.prepare(`
-  INSERT OR IGNORE INTO articles (title, slug, description, content, image, category, author, popularity)
-  VALUES (@title, @slug, @description, @content, @image, @category, @author, @popularity)
-`)
-
-console.log(`Seeding ${articles.length} articles into ${DB_PATH}\n`)
+console.log(`Seeding ${articles.length} articles into PostgreSQL...\n`)
 
 let created = 0
 let skipped = 0
 
 for (const article of articles) {
-  const result = insert.run(article)
-  if (result.changes > 0) {
+  const result = await sql`
+    INSERT INTO articles (title, slug, description, content, image, category, author, popularity, updated_at, created_at)
+    VALUES (
+      ${article.title},
+      ${article.slug},
+      ${article.description},
+      ${article.content},
+      ${article.image},
+      ${article.category},
+      ${article.author},
+      ${article.popularity},
+      NOW(),
+      NOW()
+    )
+    ON CONFLICT (slug) DO NOTHING
+    RETURNING id
+  `
+  if (result.length > 0) {
     console.log(`  CREATED: ${article.title.slice(0, 60)}...`)
     created++
   } else {
@@ -120,5 +157,5 @@ for (const article of articles) {
   }
 }
 
-db.close()
+await sql.end()
 console.log(`\nDone — ${created} created, ${skipped} skipped.`)
