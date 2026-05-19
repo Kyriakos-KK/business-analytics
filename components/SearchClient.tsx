@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import type { Article } from '@/lib/api';
 import Sidebar from './Sidebar';
+import ArticleImage from './ArticleImage';
 
 const PER_PAGE = 8;
 
@@ -13,7 +13,7 @@ type SortKey = 'newest' | 'popular' | 'alpha' | 'category';
 
 function sortResults(arr: Article[], key: SortKey): Article[] {
   const copy = [...arr];
-  if (key === 'newest') return copy.sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+  if (key === 'newest') return copy.sort((a, b) => b.dateISO.localeCompare(a.dateISO));
   if (key === 'popular') return copy.sort((a, b) => b.popularity - a.popularity);
   if (key === 'alpha') return copy.sort((a, b) => a.title.localeCompare(b.title, 'el'));
   if (key === 'category') return copy.sort((a, b) => a.category.localeCompare(b.category, 'el'));
@@ -114,7 +114,7 @@ export default function SearchClient({ articles }: Props) {
                   value={sortKey}
                   onChange={e => { setSortKey(e.target.value as SortKey); setPage(1); }}
                 >
-                  <option value="newest">Πρώτα τα παλαιότερα</option>
+                  <option value="newest">Πρώτα τα νεότερα</option>
                   <option value="popular">Περισσότερο Δημοφιλή</option>
                   <option value="alpha">Αλφαβητικά</option>
                   <option value="category">Κατηγορία</option>
@@ -137,7 +137,7 @@ export default function SearchClient({ articles }: Props) {
                 <article key={a.id} className="a-card glass fade-up">
                   <div className="a-inner">
                     <div className="a-thumb">
-                      <Image src={a.image} alt={a.title} width={162} height={112} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <ArticleImage src={a.image} alt={a.title} />
                     </div>
                     <div className="a-body">
                       <div className="a-meta">
