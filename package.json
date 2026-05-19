@@ -10,7 +10,8 @@
     "generate:types": "payload generate:types",
     "generate:importmap": "payload generate:importmap",
     "seed": "tsx scripts/seed.ts",
-    "migrate:joomla": "tsx scripts/migrate-joomla.ts"
+    "migrate:joomla": "tsx scripts/migrate-joomla.ts",
+    "migrate:joomla4": "tsx scripts/migrate-joomla4.ts"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "^3.84.1",
