@@ -1,7 +1,17 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import Image from 'next/image'
+
+// Images in subdirectories (/images/stories/, /images/articles/, etc.) live on the
+// old Joomla server, not in Next.js public/. Rewrite them to the live site URL.
+const JOOMLA_ORIGIN = 'https://www.business-analytics.gr'
+const JOOMLA_SUBDIR = /^\/images\/[^/]+\//
+
+function resolveSrc(src: string): string {
+  if (JOOMLA_SUBDIR.test(src)) return JOOMLA_ORIGIN + src
+  return src
+}
 
 interface Props {
   src: string
@@ -27,9 +37,24 @@ export default function ArticleImage({ src, alt }: Props) {
     )
   }
 
+  const resolved = resolveSrc(src)
+
+  // External URLs (Joomla subdirectory paths) use a plain <img> to avoid
+  // needing next.config remotePatterns for the old Joomla server.
+  if (resolved.startsWith('http')) {
+    return (
+      <img
+        src={resolved}
+        alt={alt}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        onError={() => setFailed(true)}
+      />
+    )
+  }
+
   return (
     <Image
-      src={src}
+      src={resolved}
       alt={alt}
       width={162}
       height={112}

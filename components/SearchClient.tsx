@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -41,7 +41,6 @@ export default function SearchClient({ articles }: Props) {
         return (
           a.title.toLowerCase().includes(q) ||
           a.excerpt.toLowerCase().includes(q) ||
-          a.content.toLowerCase().includes(q) ||
           a.category.toLowerCase().includes(q)
         );
       })

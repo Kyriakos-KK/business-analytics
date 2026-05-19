@@ -1,26 +1,27 @@
-﻿import { notFound } from 'next/navigation';
-import Image from 'next/image';
+import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { getArticleById, getAdjacentArticles } from '@/lib/api';
 import Sidebar from '@/components/Sidebar';
 import ArticleNavigation from '@/components/ArticleNavigation';
+import ArticleHeroImage from '@/components/ArticleHeroImage';
+
+// Joomla subdirectory images live on the old server, not in Next.js public/
+const JOOMLA_ORIGIN = 'https://www.business-analytics.gr'
 
 function prepareContent(content: string, heroImage: string | null | undefined): string {
   let html = content;
-
-  // Remove the hero image from content — it is already shown above as full-width hero
-  if (heroImage) {
-    const esc = heroImage.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  html = html.replace(/src="(\/images\/[^"/]+\/)/g, `src="${JOOMLA_ORIGIN}$1`);
+  html = html.replace(/src='(\/images\/[^'/]+\/)/g, `src='${JOOMLA_ORIGIN}$1`);
+  const heroResolved = heroImage
+    ? (/^\/images\/[^/]+\//.test(heroImage) ? JOOMLA_ORIGIN + heroImage : heroImage)
+    : '';
+  for (const candidate of [heroResolved, heroImage].filter(Boolean) as string[]) {
+    const esc = candidate.replace(/[.*+?^${}()|[\]\\]/g, '\\\\$&');
     html = html.replace(new RegExp(`<img[^>]+src="${esc}"[^>]*/?>`, 'i'), '');
   }
-
-  // Remove external third-party <img> tags (broken hotlinks from the old Joomla site)
   html = html.replace(/<img[^>]+src="https?:\/\/(?!(?:www\.)?business-analytics\.gr\/)[^"]*"[^>]*\/?>/gi, '');
-
-  // Remove empty <p> tags left behind after image removal
   html = html.replace(/<p[^>]*>\s*(<br\s*\/?>)?\s*<\/p>/gi, '');
-
   return html;
 }
 
@@ -38,14 +39,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ArticlePage({ params }: Props) {
   const { id } = await params;
-
   const article = await getArticleById(parseInt(id));
   if (!article) notFound();
-
   const { prev: prevArticle, next: nextArticle } = await getAdjacentArticles(article.createdAt);
-
   const bodyHtml = prepareContent(article.content, article.image);
-
   return (
     <>
       <div className="page-hero">
@@ -53,26 +50,15 @@ export default async function ArticlePage({ params }: Props) {
           <nav className="breadcrumb">
             <Link href="/">Αρχική</Link>
             <span className="sep">›</span>
-            <span className="sep">›</span>
             <span className="current">{article.title}</span>
           </nav>
         </div>
       </div>
-
       <main className="page-wrap" style={{ marginTop: 28 }}>
         <div className="content-grid">
           <section>
             <article className="article-full glass fade-up" style={{ padding: '28px 28px 32px', borderRadius: 18 }}>
-              {article.image && (
-                <Image
-                  src={article.image}
-                  alt={article.title}
-                  width={800}
-                  height={400}
-                  className="article-hero-img"
-                  priority
-                />
-              )}
+              <ArticleHeroImage src={article.image} alt={article.title} />
               <div className="article-meta-bar">
                 <span className="a-cat">{article.category}</span>
                 <span className="a-date">
@@ -86,10 +72,7 @@ export default async function ArticlePage({ params }: Props) {
                 </span>
               </div>
               <h1 className="article-title-lg">{article.title}</h1>
-              <div
-                className="article-content"
-                dangerouslySetInnerHTML={{ __html: bodyHtml }}
-              />
+              <div className="article-content" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
               <ArticleNavigation prev={prevArticle} next={nextArticle} />
             </article>
           </section>

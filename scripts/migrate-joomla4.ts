@@ -1,4 +1,4 @@
-/**
+﻿/**
  * migrate-joomla4.ts
  * Migrates Joomla 4.x articles (bgr_ prefix) into Payload CMS PostgreSQL.
  * Source: migration-data/ba_gr_2026-05-12_15-51-00.sql
@@ -164,7 +164,7 @@ async function main() {
   // Fetch existing slugs
   console.log('Fetching existing slugs from PostgreSQL...')
   const existingRows = await sql`SELECT slug FROM articles`
-  const existingSlugs = new Set(existingRows.map((r: { slug: string }) => r.slug))
+  const existingSlugs = new Set((existingRows as unknown as { slug: string }[]).map(r => r.slug))
   console.log('Existing slugs in DB: ' + existingSlugs.size)
 
   const articles: {
@@ -299,7 +299,7 @@ async function main() {
     FROM articles GROUP BY year ORDER BY year
   `
   console.log('\nYear distribution after migration:')
-  yearFinal.forEach((r: { year: number; cnt: string }) => console.log('  ' + r.year + ': ' + r.cnt))
+  ;(yearFinal as unknown as { year: number; cnt: string }[]).forEach(r => console.log('  ' + r.year + ': ' + r.cnt))
 
   await sql.end()
 }

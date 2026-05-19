@@ -27,7 +27,7 @@ function formatCreatedAt(isoString: string): { date: string; dateISO: string } {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapDoc(doc: any): Article {
+function mapDoc(doc: any, stripContent = false): Article {
   const { date, dateISO } = formatCreatedAt(doc.createdAt as string)
   return {
     id:         Number(doc.id),
@@ -38,7 +38,7 @@ function mapDoc(doc: any): Article {
     image:      (doc.image       as string) ?? '',
     popularity: Number(doc.popularity ?? 0),
     excerpt:    (doc.description as string) ?? '',
-    content:    (doc.content     as string) ?? '',
+    content:    stripContent ? '' : ((doc.content as string) ?? ''),
     author:     (doc.author      as string) ?? 'Business Analytics',
     createdAt:  (doc.createdAt   as string) ?? '',
   }
@@ -53,9 +53,25 @@ export async function getAllArticles(): Promise<Article[]> {
       limit:      1200,
       depth:      0,
     })
-    return result.docs.map(mapDoc)
+    return result.docs.map(doc => mapDoc(doc))
   } catch (error) {
     console.error('getAllArticles failed:', error)
+    return []
+  }
+}
+
+export async function getAllArticlesForSearch(): Promise<Article[]> {
+  try {
+    const payload = await getPayload({ config })
+    const result  = await payload.find({
+      collection: 'articles',
+      sort:       '-createdAt',
+      limit:      4000,
+      depth:      0,
+    })
+    return result.docs.map(doc => mapDoc(doc, true))
+  } catch (error) {
+    console.error('getAllArticlesForSearch failed:', error)
     return []
   }
 }
@@ -74,7 +90,7 @@ export async function getArticlesPaginated(
       depth:      0,
     })
     return {
-      articles:   result.docs.map(mapDoc),
+      articles:   result.docs.map(doc => mapDoc(doc)),
       totalDocs:  result.totalDocs,
       totalPages: result.totalPages,
       page:       result.page ?? page,
